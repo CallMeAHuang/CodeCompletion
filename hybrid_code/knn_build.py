@@ -97,6 +97,8 @@ class KNNWrapper(object):
         self.cur_lambda = None
         self.dist_func = KNNWrapper.l2
 
+
+
     def setup_faiss(self):
 
         start = time.time()
@@ -182,6 +184,20 @@ class KNNWrapper(object):
         self.lmbda = self.original_lmbda
 
     # 行级别补全更新后需要还原
+    def calculate_lmbda_fn(self, output, queries, input_ids):
+        batch, time_dim, vocab_size = output.shape
+        shift = 0 if self.is_encoder_decoder else 1
+        lm_logits = torch.softmax(output, dim=-1).flatten(0, 1)
+        lm_token_ids = torch.argmax(lm_logits, dim=-1).view(batch, -1)
+        dists, knns = self.get_knns(queries)
+        knn_log_probs, _ = self.knns_to_prob(knns, dists)
+        knn_token_ids = torch.argmax(knn_log_probs, dim=-1).view(batch, -1)
+        believe_lm = (lm_token_ids[:, :-shift] == input_ids[:, shift:])
+        believe_knn = (knn_token_ids[:, :-shift] == input_ids[:, shift:])
+        lm_right = torch.sum(believe_lm & ~believe_knn)
+        knn_right = torch.sum(believe_knn & ~believe_lm)
+        lmbda = (knn_right / (lm_right + knn_right)).item()
+        return lmbda
 
     def post_forward_hook(self, module, input, output):
         batch, time_dim, vocab_size = output.shape
@@ -189,47 +205,47 @@ class KNNWrapper(object):
         lm_logits = output
         lm_logits = torch.softmax(lm_logits, dim=-1).flatten(0, 1)
         queries = self.activation_capturer.captured.flatten(0, 1)  # (batch, time, dim)
-
         dists, knns = self.get_knns(queries)
-
+        
         # if self.recompute_dists:
         #     knns_vecs = torch.from_numpy(self.keys[knns]).to(self.device)
         #     dists = self.dist_func(queries, knns_vecs)
 
         knn_log_probs, _ = self.knns_to_prob(knns, dists)
-        if self.use_knn:
-            _lambda = self.lmbda
-        if self.use_knm:
-            if self.use_bayes:
-                p_knn_index = torch.argmax(knn_log_probs, dim=-1).view(batch, -1)
-                p_lm_index = torch.argmax(lm_logits, dim=-1).view(batch, -1)
-                # 只看前面的概率,最后一个位置的输出没有用，所以不用管
-                before_believe_knn = (p_knn_index[:, :-shift] == self.input_ids[:, shift:])
-                before_believe_lm = (p_lm_index[:, :-shift] == self.input_ids[:, shift:])
-                believe_knn = before_believe_knn * ~before_believe_lm
-                believe_lm = before_believe_lm * ~before_believe_knn
-                # window_size 8
-                believe_lm = self.n_gram(believe_lm, n=int(np.log2(self.window_size)))
-                believe_knn = self.n_gram(believe_knn, n=int(np.log2(self.window_size)))
-                zeros = torch.ones(batch, 1).to(self.device)
-                believe_knn = torch.cat([zeros, believe_knn], dim=1)
-                believe_lm = torch.cat([zeros, believe_lm], dim=1)
-                error_rate = self.lmbda * self.window_size
-                _lambda = (believe_knn + error_rate) / (believe_knn + believe_lm + self.window_size)
-                _lambda = _lambda.contiguous().view(-1).unsqueeze(-1)
-            else:
-                _lambda = self.lmbda
-            if self.calculate_lmbda:
-                lm_token_ids = torch.argmax(lm_logits, dim=-1).view(batch, -1)
-                knn_token_ids = torch.argmax(knn_log_probs, dim=-1).view(batch, -1)
-                believe_lm = (lm_token_ids[:, :-shift] == self.input_ids[:, shift:])
-                believe_knn = (knn_token_ids[:, :-shift] == self.input_ids[:, shift:])
-                lm_right = torch.sum(believe_lm & ~believe_knn)
-                knn_right = torch.sum(believe_knn & ~believe_lm)
-                self.lmbda = (knn_right / (lm_right + knn_right)).item()
-                _lambda = self.lmbda
-                self.calculate_lmbda = False
+        # if self.use_knn:
+        #     _lambda = self.lmbda
+        # if self.use_knm:
+        #     if self.use_bayes:
+        #         p_knn_index = torch.argmax(knn_log_probs, dim=-1).view(batch, -1)
+        #         p_lm_index = torch.argmax(lm_logits, dim=-1).view(batch, -1)
+        #         # 只看前面的概率,最后一个位置的输出没有用，所以不用管
+        #         before_believe_knn = (p_knn_index[:, :-shift] == self.input_ids[:, shift:])
+        #         before_believe_lm = (p_lm_index[:, :-shift] == self.input_ids[:, shift:])
+        #         believe_knn = before_believe_knn * ~before_believe_lm
+        #         believe_lm = before_believe_lm * ~before_believe_knn
+        #         # window_size 8
+        #         believe_lm = self.n_gram(believe_lm, n=int(np.log2(self.window_size)))
+        #         believe_knn = self.n_gram(believe_knn, n=int(np.log2(self.window_size)))
+        #         zeros = torch.ones(batch, 1).to(self.device)
+        #         believe_knn = torch.cat([zeros, believe_knn], dim=1)
+        #         believe_lm = torch.cat([zeros, believe_lm], dim=1)
+        #         error_rate = self.lmbda * self.window_size
+        #         _lambda = (believe_knn + error_rate) / (believe_knn + believe_lm + self.window_size)
+        #         _lambda = _lambda.contiguous().view(-1).unsqueeze(-1)
+        #     else:
+        #         _lambda = self.lmbda
+        #     if self.calculate_lmbda:
+        #         lm_token_ids = torch.argmax(lm_logits, dim=-1).view(batch, -1)
+        #         knn_token_ids = torch.argmax(knn_log_probs, dim=-1).view(batch, -1)
+        #         believe_lm = (lm_token_ids[:, :-shift] == self.input_ids[:, shift:])
+        #         believe_knn = (knn_token_ids[:, :-shift] == self.input_ids[:, shift:])
+        #         lm_right = torch.sum(believe_lm & ~believe_knn)
+        #         knn_right = torch.sum(believe_knn & ~believe_lm)
+        #         self.lmbda = (knn_right / (lm_right + knn_right)).item()
+        #         _lambda = self.lmbda
+        #         self.calculate_lmbda = False
 
+        _lambda = self.lmbda
         self.cur_lambda = _lambda
 
         # print(self.calculate_lmbda)
@@ -358,7 +374,9 @@ class KNNSaver(object):
         self.pad_id = pad_id
         self.hook_handles = []
 
- 
+        # 为了调整计算方式
+        self.output_logits = None
+        self.output_queries = None
 
     def break_into(self, model):
         self.model = model
@@ -389,16 +407,19 @@ class KNNSaver(object):
 
     def post_forward_hook(self, module, input, output):
         shift = 0 if self.is_encoder_decoder else 1
-        captured_keys = self.activation_capturer.captured
-
+        captured = self.activation_capturer.captured
+        captured_keys = captured[:-1]
+        captured_queries = captured[-1]
         if shift == 1:
             captured_keys = captured_keys[:, :-shift]
+        # print('keys:', captured_keys.shape)
         captured_keys = captured_keys.flatten(0, 1)  # (batch * time, dim)
-        captured_values = self.labels[:, shift:].flatten(0, 1)  # (batch * time)
+        captured_values = self.labels[:-1][:, shift:].flatten(0, 1)  # (batch * time)
 
         nonpad_mask = captured_values != self.pad_id
-
-        lm_logits = output
+        # print('nonpad:', nonpad_mask.shape)
+        # print('num:', nonpad_mask.sum().item())
+        lm_logits = output[:-1]
         pred_ids = torch.argmax(lm_logits[..., :-shift, :], dim=-1)  # (batch, time, vocab)
         pred_ids = pred_ids.flatten(0, 1)
 
@@ -407,8 +428,34 @@ class KNNSaver(object):
 
         self.dstore_keys = captured_keys[nonpad_mask]
         self.dstore_vals = captured_values[nonpad_mask]
-
+        self.output_logits = output[-1].unsqueeze(0)
+        self.output_queries = captured_queries.unsqueeze(0)
         return output
+    
+
+    # def post_forward_hook(self, module, input, output):
+    #     shift = 0 if self.is_encoder_decoder else 1
+    #     captured_keys = self.activation_capturer.captured
+
+    #     if shift == 1:
+    #         captured_keys = captured_keys[:, :-shift]
+    #     captured_keys = captured_keys.flatten(0, 1)  # (batch * time, dim)
+    #     captured_values = self.labels[:, shift:].flatten(0, 1)  # (batch * time)
+
+    #     nonpad_mask = captured_values != self.pad_id
+
+    #     lm_logits = output
+    #     pred_ids = torch.argmax(lm_logits[..., :-shift, :], dim=-1)  # (batch, time, vocab)
+    #     pred_ids = pred_ids.flatten(0, 1)
+
+    #     if self.only_errors:
+    #         nonpad_mask = (nonpad_mask * (pred_ids != captured_values)).bool()
+
+    #     self.dstore_keys = captured_keys[nonpad_mask]
+    #     self.dstore_vals = captured_values[nonpad_mask]
+
+    #     return output
+
 
     def register_hook(self, layer, func, pre=False):
         handle = layer.register_forward_pre_hook(func) if pre else layer.register_forward_hook(func)

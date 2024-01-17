@@ -146,70 +146,6 @@ def build_token_completion_data(tokenizer, args, logger, file_type='train', bloc
                 f.write(json.dumps(s))
 
 
-# def split_for_token_completion(input_ids, tokenizer, logger, model_type, file_type, block_size=1024):
-#     idx = 0
-#
-#     split_inputs = []
-#     before_contexts = []
-#     i = 0
-#
-#     while i < len(input_ids):
-#         sample = input_ids[i: i + block_size]
-#         if len(sample) == block_size:
-#             for j in range(block_size):
-#                 if tokenizer.convert_ids_to_tokens(sample[block_size - 1 - j])[
-#                     0] == '\u0120' or tokenizer.convert_ids_to_tokens(sample[block_size - 1 - j]).startswith(
-#                         "<NUM_LIT"):
-#                     break
-#
-#                 if sample[block_size - 1 - j] in [tokenizer.bos_token_id, tokenizer.eos_token_id,
-#                                                   tokenizer.sep_token_id]:
-#                     if sample[block_size - 1 - j] == tokenizer.eos_token_id:
-#                         if model_type == 'unixCoder' and \
-#                                 sample[block_size - 3 - j] == tokenizer.bos_token_id:
-#                             j += 2
-#                         else:
-#                             j -= 1
-#                     elif sample[block_size - 1 - j] == tokenizer.sep_token_id:
-#                         j -= 1
-#
-#                     break
-#             if j == block_size - 1:
-#                 if file_type == 'dev':
-#                     i = i + block_size
-#                     continue
-#                 print(tokenizer.decode(sample))
-#                 exit()
-#             sample = sample[: block_size - 1 - j]
-#         # print(len(sample))
-#         i += len(sample)
-#
-#         sub_len = block_size // 4
-#
-#         before_sub_sample = None
-#
-#         for k in range(4):
-#             begin_index = k * sub_len
-#             end_index = (k+1) * sub_len
-#
-#             if begin_index > len(sample):
-#                 continue
-#
-#             sub_sample = sample[begin_index: end_index]
-#             split_inputs.append(sub_sample)
-#             if before_sub_sample is not None:
-#                 before_contexts.append({'id': idx,
-#                                         'input': tokenizer.decode(before_sub_sample)})
-#
-#             before_sub_sample = sub_sample
-#             idx += 1
-#
-#         if len(split_inputs) % 10000 == 0:
-#             logger.info(f"{len(split_inputs)} samples")
-#
-#     return split_inputs, before_contexts
-
-
 class RetrieveDataset(Dataset):
     def __init__(self, tokenizer, lang, file_path, block_size=512, api=True):
         self.tokenizer = tokenizer
@@ -408,15 +344,21 @@ class LineDataset(Dataset):
         logger.info("Data size: %d"%(length))
         self.inputs = []
         self.gts = []
-        self.cands = []
+        self.idx = []
+        
         for i,data in enumerate(datas):
             if i % 1000 == 0:
                 logger.info(f"Encoded {i}/{length} data")
+            if i == 8000:
+                break
             data = json.loads(data.strip())
-            
+            input_tokens = [t for t in tokenizer.tokenize(data["input"])]
+            input_ids = tokenizer.convert_tokens_to_ids(input_tokens)
+            max_trunca_len = max(cand_block_size,min(block_size, len(input_ids)))
+            idx = 0
             if load_file is not None:
                 try:
-                    cands = []
+                    inputs = []
                     data_id = data["id"] if "id" in data else i
                     cand_id_list = search_results[data_id]
                     for cand_id in cand_id_list:
@@ -426,27 +368,34 @@ class LineDataset(Dataset):
                         #cand = tokenizer.encode(cand)
                         cand_tokens = [t for t in tokenizer.tokenize(cand)]
                         cand = tokenizer.convert_tokens_to_ids(cand_tokens)
-                        if len(cand) < cand_block_size:
-                            pad_len = cand_block_size - len(cand)
+                        if len(cand) >= cand_block_size:
+                            cand = cand[:cand_block_size]
+                        if len(cand) < max_trunca_len:
+                            pad_len = max_trunca_len - len(cand)
                             cand += [tokenizer.pad_token_id] * pad_len
-                            cands.append(cand)
+                            inputs.append(cand)
                         else:
-                            cands.append(cand[:cand_block_size])
+                            inputs.append(cand[:max_trunca_len])
                 except:
                     print(i)
-                    cands = [tokenizer.pad_token_id] * cand_block_size
+                    inputs = [tokenizer.pad_token_id] * max_trunca_len
             else:
-                cand = []       
-            
-            input_tokens = [t for t in tokenizer.tokenize(data["input"])]
-            input_ids = tokenizer.convert_tokens_to_ids(input_tokens)
-            self.inputs.append(input_ids[-block_size:])
-            self.cands.append(cands)
+                inputs = []
+            if len(input_ids) > max_trunca_len:
+                idx = max_trunca_len
+                input_ids = input_ids[-max_trunca_len:]
+            else:
+                idx = len(input_ids)
+                input_ids += [tokenizer.pad_token_id] * (max_trunca_len - len(input_ids))
+            inputs.append(input_ids)
+            self.inputs.append(inputs)
             self.gts.append(data["gt"])
+            self.idx.append(idx)
+
 
 
     def __len__(self):
         return len(self.inputs)
 
     def __getitem__(self, item):
-        return torch.tensor(self.inputs[item]), torch.tensor(self.cands[item]), self.gts[item]
+        return torch.tensor(self.inputs[item]), self.gts[item], self.idx[item]

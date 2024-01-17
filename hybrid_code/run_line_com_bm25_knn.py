@@ -62,43 +62,50 @@ def eval_line_completion(args, model, tokenizer, file_type='test', load_file="tr
     dimension = model.config.hidden_size
     start_time = time.time()
     db_search_time = 0
-    for step, (inputs, cands, gt) in enumerate(test_dataloader):
-        inputs = inputs.to(args.device)
-        cands = cands.squeeze(dim=0).to(args.device)
+    for step, (inputs, gt, idx) in enumerate(test_dataloader):
+        inputs = inputs.squeeze(dim=0).to(args.device)
+        input_seq = inputs[-1][:idx].unsqueeze(0)
         with torch.no_grad():
             # 1. 计算数据库
             db_start_time = time.time()
             knn_saver = KNNSaver(dimension=dimension, pad_id=tokenizer.pad_token_id,
                                  only_errors=args.only_errors)
             knn_saver.break_into(model)
-            model(cands, labels=cands)
+            past_key_values = model(inputs, labels=inputs)[2]
+            # 上下文逻辑输出
+            output_logits = knn_saver.output_logits[:,:idx-1,:] 
+            output_querys = knn_saver.output_queries[:,:idx-1,:].flatten(0, 1)
+            # 数据库存储
             dstore_keys = knn_saver.dstore_keys
             dstore_vals = knn_saver.dstore_vals
+            
+            # return 0
             knn_saver.break_out()
             del knn_saver
-            db_end_time = time.time()
-            db_search_time += db_end_time - db_start_time
             # 2. 计算先验值
             knn_wrapper = KNNWrapper(dimension=dimension, keys=dstore_keys, vals=dstore_vals,
                                      use_knn=args.use_knn, lmbda=args.lmbda,
                                      use_knm=args.use_knm, use_bayes=args.use_bayes, window_size=args.window_size,
                                      knn_method=args.knn_method, pad_id=tokenizer.pad_token_id, k=args.token_k)
             knn_wrapper.break_into(model)
+            if args.use_knm:
+                knn_wrapper.lmbda = knn_wrapper.calculate_lmbda_fn(output=output_logits, queries=output_querys,
+                                                   input_ids=input_seq[:, :-1])
+            # print(knn_wrapper.lmbda)
+            # model_outputs = model(input_seq[:, :-1])
+            # outputs = model_outputs[1]
+            # print(knn_wrapper.lmbda)
             beam_size = 5
             m = torch.nn.LogSoftmax(dim=-1)
-            model_outputs = model(inputs[:, :-1])
-            outputs = model_outputs[1]
             p = []
             zero = torch.cuda.LongTensor(1).fill_(0)
+            db_end_time = time.time()
+            db_search_time += db_end_time - db_start_time
             # 3. beam search
-            for i in range(inputs.shape[0]):
-                if args.model_type == "rnn":
-                    past_hidden = tuple(x[:, i:i + 1].expand(-1, beam_size, -1).contiguous() for x in outputs)
-                else:
-                    past = [torch.cat([x[0].unsqueeze(0), x[1].unsqueeze(0)], dim=0) if type(x) == tuple else x for x in
-                            outputs]
-                    past_hidden = [x[:, i:i + 1].expand(-1, beam_size, -1, -1, -1) for x in past]
-                beam = Beam(beam_size, inputs[i][-1].cpu().data, break_ids)
+            for i in range(input_seq.shape[0]):
+                past = [torch.cat([x[0][-1][:,:idx-1,:].unsqueeze(0).unsqueeze(0), x[1][-1][:,:idx-1,:].unsqueeze(0).unsqueeze(0)], dim=0) if type(x) == tuple else x for x in past_key_values]
+                past_hidden = [x[:, i:i + 1].expand(-1, beam_size, -1, -1, -1) for x in past]
+                beam = Beam(beam_size, input_seq[i][-1].cpu().data, break_ids)
                 input_ids = None
                 for _ in range(100):
                     if beam.done():
@@ -218,7 +225,6 @@ def add_args(parser):
     parser.add_argument("--use_bayes", action="store_true")
     parser.add_argument("--window_size",default=8, type=int)
     parser.add_argument('--knn_method', type=str, default='original')
-    
     # 命令相关
     parser.add_argument("--data_process", action="store_true")
     parser.add_argument("--build_index", action='store_true')
@@ -229,6 +235,7 @@ def add_args(parser):
     parser.add_argument("--use_hybrid", action='store_true')
     parser.add_argument("--bm_name", default="bm25", type=str, required=False,
                         help="elasticsearch name.")
+    parser.add_argument('--use_clearml', action='store_true')
     parser.add_argument('--clearml_proj_name', type=str, default='Hybrid')
     parser.add_argument('--task_name', type=str, default='')
     parser.add_argument('--log_file', type=str, default='log.log')
@@ -260,8 +267,9 @@ def main():
         description += "__hybrid"
     if args.use_dense:
         description += "__dense"
-
-    Task.init(project_name=args.clearml_proj_name, task_name=args.task_name)
+    if args.use_clearml:
+        print("use_clearml")
+        Task.init(project_name=args.clearml_proj_name, task_name=args.task_name)
 
     # setup logging
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
