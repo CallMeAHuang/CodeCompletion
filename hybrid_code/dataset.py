@@ -16,15 +16,6 @@ logger = logging.getLogger(__name__)
 
 def tokenize(source, tokenizer, mode_type):
     source = source.strip()
-
-    # if source.startswith("<s>") and source.endswith("</s>"):
-    #     if mode_type == 'unixCoder':
-    #         source = "<s> <decoder-only> </s> " + source[4:]
-    # else:
-    #     if mode_type == 'unixCoder':
-    #         source = "<s> <decoder-only> </s> " + source + " </s>"
-    #     elif mode_type == 'gpt2':
-    #        source = "<s> " + source + " </s>"
     if not source.startswith("<s>"):
         source = "<s> " + source + " </s>"
     source_tokens = [t for t in tokenizer.tokenize(source)]
@@ -409,11 +400,13 @@ class LineDataset(Dataset):
         self.inputs = []
         self.gts = []
         self.cands = []
+        all_idx = 0
+        all_trunc = 0
         for i,data in enumerate(datas):
             if i % 1000 == 0:
                 logger.info(f"Encoded {i}/{length} data")
             data = json.loads(data.strip())
-            
+            max_cand = 0
             if load_file is not None:
                 try:
                     cands = []
@@ -426,12 +419,17 @@ class LineDataset(Dataset):
                         #cand = tokenizer.encode(cand)
                         cand_tokens = [t for t in tokenizer.tokenize(cand)]
                         cand = tokenizer.convert_tokens_to_ids(cand_tokens)
-                        if len(cand) < cand_block_size:
-                            pad_len = cand_block_size - len(cand)
-                            cand += [tokenizer.pad_token_id] * pad_len
-                            cands.append(cand)
+                        cands.append(cand)
+                        max_cand = max(max_cand, len(cand))
+                    max_trunc_len = min(max_cand, cand_block_size)
+                    for idx in range(len(cands)):
+                        if len(cands[idx]) < max_trunc_len:
+                            pad_len = max_trunc_len - len(cands[idx])
+                            cands[idx] += [tokenizer.pad_token_id] * pad_len
                         else:
-                            cands.append(cand[:cand_block_size])
+                            cands[idx] = cands[idx][:max_trunc_len]
+                    all_idx = i
+                    all_trunc += max_trunc_len
                 except:
                     print(i)
                     cands = [tokenizer.pad_token_id] * cand_block_size
@@ -443,7 +441,7 @@ class LineDataset(Dataset):
             self.inputs.append(input_ids[-block_size:])
             self.cands.append(cands)
             self.gts.append(data["gt"])
-
+        print(all_trunc / all_idx)
 
     def __len__(self):
         return len(self.inputs)

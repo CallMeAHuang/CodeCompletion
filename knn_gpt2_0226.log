@@ -1,0 +1,54 @@
+Model has a total of 124644864 trainable parameters
+Training/evaluation parameters Namespace(data_dir='./dataset/intra_scenario_completion/java/token_completion_debug2/Android', langs='java', output_dir='./save/intra_scenario/java/line/Android/gpt2/knm_lm', model_type='gpt2', pretrain_dir='../transformers/CodeGPT-small-java-adaptedGPT2', config_dir=None, tokenizer_dir=None, lit_file='./dataset/intra_scenario_completion/java/literals.json', load_name='pretrained', mlm=False, mlm_probability=0.15, cache_dir='', block_size=1024, evaluate_during_training=False, do_lower_case=False, per_gpu_train_batch_size=4, per_gpu_eval_batch_size=4, gradient_accumulation_steps=1, learning_rate=5e-05, weight_decay=0.0, adam_epsilon=1e-08, max_grad_norm=1.0, num_train_epochs=1.0, max_steps=-1, warmup_steps=0, logging_steps=100, save_steps=5000, save_total_limit=None, eval_all_checkpoints=False, no_cuda=False, overwrite_output_dir=False, overwrite_cache=False, seed=42, not_pretrain=False, fp16=False, fp16_opt_level='O1', local_rank=-1, node_index=-1, gpu_per_node=-1, server_ip='', server_port='', log_file='knn_gpt2_0226.log', tensorboard_dir=None, do_train=False, do_eval_token=False, do_eval_line=False, with_knn=True, only_errors=False, build_index=True, dstore_size=102400000, dstore_dir='./save/intra_scenario/java/line/Android/gpt2/knm_lm/db', knn_sim_func=<DIST.l2: 1>, knn_keytype=<KEY_TYPE.last_ffn_input: 1>, no_load_keys=True, move_dstore_to_mem=True, knn_gpu=True, recompute_dists=False, k=1024, lmbda=0.1, knn_temp=1.0, probe=32, use_bayes=False, window_size=8, need_knn_train=True, clearml_proj_name='Hybrid', task_name='knn_gpt2_build_0226', n_gpu=1, device=device(type='cuda'), start_epoch=0, start_step=0)
+Training/evaluation parameters Namespace(data_dir='./dataset/intra_scenario_completion/java/token_completion_debug2/Android', langs='java', output_dir='./save/intra_scenario/java/line/Android/gpt2/knm_lm', model_type='gpt2', pretrain_dir='../transformers/CodeGPT-small-java-adaptedGPT2', config_dir=None, tokenizer_dir=None, lit_file='./dataset/intra_scenario_completion/java/literals.json', load_name='pretrained', mlm=False, mlm_probability=0.15, cache_dir='', block_size=1024, evaluate_during_training=False, do_lower_case=False, per_gpu_train_batch_size=4, per_gpu_eval_batch_size=4, gradient_accumulation_steps=1, learning_rate=5e-05, weight_decay=0.0, adam_epsilon=1e-08, max_grad_norm=1.0, num_train_epochs=1.0, max_steps=-1, warmup_steps=0, logging_steps=100, save_steps=5000, save_total_limit=None, eval_all_checkpoints=False, no_cuda=False, overwrite_output_dir=False, overwrite_cache=False, seed=42, not_pretrain=False, fp16=False, fp16_opt_level='O1', local_rank=-1, node_index=-1, gpu_per_node=-1, server_ip='', server_port='', log_file='knn_gpt2_0226.log', tensorboard_dir=None, do_train=False, do_eval_token=False, do_eval_line=False, with_knn=True, only_errors=False, build_index=True, dstore_size=102400000, dstore_dir='./save/intra_scenario/java/line/Android/gpt2/knm_lm/db', knn_sim_func=<DIST.l2: 1>, knn_keytype=<KEY_TYPE.last_ffn_input: 1>, no_load_keys=True, move_dstore_to_mem=True, knn_gpu=True, recompute_dists=False, k=1024, lmbda=0.1, knn_temp=1.0, probe=32, use_bayes=False, window_size=8, need_knn_train=True, clearml_proj_name='Hybrid', task_name='knn_gpt2_build_0226', n_gpu=1, device=device(type='cuda'), start_epoch=0, start_step=0)
+  acc = 0.617810070514679
+  perplexity = 819.9147338867188
+ actual dstore size is 54296354
+Model has a total of 124644864 trainable parameters
+Training/evaluation parameters Namespace(data_dir='./dataset/intra_scenario_completion/java/line_completion/Android', langs='java', output_dir='./save/intra_scenario/java/line/Android/gpt2/knm_lm', model_type='gpt2', pretrain_dir='../transformers/CodeGPT-small-java-adaptedGPT2', config_dir=None, tokenizer_dir=None, lit_file='./dataset/intra_scenario_completion/java/literals.json', load_name='pretrained', mlm=False, mlm_probability=0.15, cache_dir='', block_size=1024, evaluate_during_training=False, do_lower_case=False, per_gpu_train_batch_size=4, per_gpu_eval_batch_size=4, gradient_accumulation_steps=1, learning_rate=5e-05, weight_decay=0.0, adam_epsilon=1e-08, max_grad_norm=1.0, num_train_epochs=1.0, max_steps=-1, warmup_steps=0, logging_steps=100, save_steps=5000, save_total_limit=None, eval_all_checkpoints=False, no_cuda=False, overwrite_output_dir=False, overwrite_cache=False, seed=42, not_pretrain=False, fp16=False, fp16_opt_level='O1', local_rank=-1, node_index=-1, gpu_per_node=-1, server_ip='', server_port='', log_file='knn_gpt2_0226.log', tensorboard_dir=None, do_train=False, do_eval_token=False, do_eval_line=True, with_knn=True, only_errors=False, build_index=False, dstore_size=102400000, dstore_dir='./save/intra_scenario/java/line/Android/gpt2/knm_lm/db', knn_sim_func=<DIST.l2: 1>, knn_keytype=<KEY_TYPE.last_ffn_input: 1>, no_load_keys=True, move_dstore_to_mem=True, knn_gpu=True, recompute_dists=False, k=1024, lmbda=0.1, knn_temp=1.0, probe=32, use_bayes=False, window_size=8, need_knn_train=False, clearml_proj_name='Hybrid', task_name='knn_gpt2_0226', n_gpu=1, device=device(type='cuda'), start_epoch=0, start_step=0)
+Training/evaluation parameters Namespace(data_dir='./dataset/intra_scenario_completion/java/line_completion/Android', langs='java', output_dir='./save/intra_scenario/java/line/Android/gpt2/knm_lm', model_type='gpt2', pretrain_dir='../transformers/CodeGPT-small-java-adaptedGPT2', config_dir=None, tokenizer_dir=None, lit_file='./dataset/intra_scenario_completion/java/literals.json', load_name='pretrained', mlm=False, mlm_probability=0.15, cache_dir='', block_size=1024, evaluate_during_training=False, do_lower_case=False, per_gpu_train_batch_size=4, per_gpu_eval_batch_size=4, gradient_accumulation_steps=1, learning_rate=5e-05, weight_decay=0.0, adam_epsilon=1e-08, max_grad_norm=1.0, num_train_epochs=1.0, max_steps=-1, warmup_steps=0, logging_steps=100, save_steps=5000, save_total_limit=None, eval_all_checkpoints=False, no_cuda=False, overwrite_output_dir=False, overwrite_cache=False, seed=42, not_pretrain=False, fp16=False, fp16_opt_level='O1', local_rank=-1, node_index=-1, gpu_per_node=-1, server_ip='', server_port='', log_file='knn_gpt2_0226.log', tensorboard_dir=None, do_train=False, do_eval_token=False, do_eval_line=True, with_knn=True, only_errors=False, build_index=False, dstore_size=102400000, dstore_dir='./save/intra_scenario/java/line/Android/gpt2/knm_lm/db', knn_sim_func=<DIST.l2: 1>, knn_keytype=<KEY_TYPE.last_ffn_input: 1>, no_load_keys=True, move_dstore_to_mem=True, knn_gpu=True, recompute_dists=False, k=1024, lmbda=0.1, knn_temp=1.0, probe=32, use_bayes=False, window_size=8, need_knn_train=False, clearml_proj_name='Hybrid', task_name='knn_gpt2_0226', n_gpu=1, device=device(type='cuda'), start_epoch=0, start_step=0)
+Data size: 49344
+0 are done!
+Edit sim: 58.0, EM: 0.0
+step: 0, all time: 0.1403045654296875
+step: 0, token search time: 0.005501985549926758
+100 are done!
+Edit sim: 52.504950495049506, EM: 0.1782178217821782
+step: 100, all time: 21.75628662109375
+step: 100, token search time: 5.455077886581421
+200 are done!
+Edit sim: 59.27860696517413, EM: 0.19402985074626866
+step: 200, all time: 52.687764167785645
+step: 200, token search time: 13.299148082733154
+300 are done!
+Edit sim: 60.006644518272424, EM: 0.18272425249169436
+step: 300, all time: 77.58351683616638
+step: 300, token search time: 19.01886224746704
+400 are done!
+Edit sim: 57.433915211970074, EM: 0.16458852867830423
+step: 400, all time: 98.40555667877197
+step: 400, token search time: 22.990706205368042
+500 are done!
+Edit sim: 58.77445109780439, EM: 0.13972055888223553
+step: 500, all time: 113.67572951316833
+step: 500, token search time: 24.679362535476685
+600 are done!
+Edit sim: 57.983361064891845, EM: 0.13976705490848584
+step: 600, all time: 131.2834370136261
+step: 600, token search time: 26.871389865875244
+700 are done!
+Edit sim: 56.830242510699, EM: 0.12553495007132667
+step: 700, all time: 155.4071342945099
+step: 700, token search time: 29.89979910850525
+800 are done!
+Edit sim: 57.59051186017478, EM: 0.16354556803995007
+step: 800, all time: 174.05946731567383
+step: 800, token search time: 32.552287578582764
+900 are done!
+Edit sim: 57.77136514983352, EM: 0.16981132075471697
+step: 900, all time: 193.1752529144287
+step: 900, token search time: 35.735169410705566
+1000 are done!
+Edit sim: 57.95804195804196, EM: 0.17282717282717283
+step: 1000, all time: 217.69870901107788
+step: 1000, token search time: 41.41990256309509

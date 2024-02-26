@@ -96,6 +96,77 @@ def split_code(file_name, output_dir, max_chunk_len=300):
 
     return split_file_path
 
+# 将需要存储到数据库的数据按行进行分块
+def split_line_by_keyword(lst, keyword):
+    result = []
+    current_segment = []
+    for item in lst:
+        if item == keyword:
+            if current_segment:
+                result.append(current_segment)
+                current_segment = []
+        else:
+            current_segment.append(item)
+    if current_segment: 
+        result.append(current_segment)
+
+    return result
+
+def split_code_by_blank(file_name, output_dir, max_chunk_len=300):
+    print('split code by blank line from ', file_name)
+    lines = open(file_name, "r").readlines()
+    split_file_path = output_dir + '/' + file_name.split("/")[-1].split(".")[0] +  "_blank_split.txt"
+    wf = open(split_file_path, "w")
+    nexts = []
+    cnt = 0
+    for line in lines:
+        tokens = json.loads(line.strip())
+        s = len([t for t in tokens if '<STR_LIT' in t])
+        if s > 1024:
+            continue
+        split_tokens = split_line_by_keyword(tokens, 'BLANKLINE')
+        for sub_tokens in split_tokens:
+            if len(sub_tokens) > max_chunk_len:
+                for i in range(0, len(sub_tokens), max_chunk_len):
+                    wf.write(" ".join(sub_tokens[i:i + max_chunk_len]) + "\n")
+                    nexts.append(cnt + 1)
+                    cnt += 1
+            else:
+                wf.write(" ".join(sub_tokens) + "\n")
+                nexts.append(cnt+1)
+                cnt += 1
+        nexts[-1] -= 1
+    wf.close()
+    pickle.dump(nexts, open(output_dir + '/' + file_name.split("/")[-1].split(".")[0] + "_blank_split_nexts.pkl", "wb"))
+    return split_file_path
+
+def split_code_by_func(file_name, output_dir, max_chunk_len=300):
+    print('split code by func line from ', file_name)
+    lines = open(file_name, "r").readlines()
+    split_file_path = output_dir + '/' + file_name.split("/")[-1].split(".")[0] +  "_func_split.txt"
+    wf = open(split_file_path, "w")
+    nexts = []
+    cnt = 0
+    for line in lines:
+        tokens = json.loads(line.strip())
+        s = len([t for t in tokens if '<STR_LIT' in t])
+        if s > 1024:
+            continue
+        split_tokens = split_line_by_keyword(tokens, 'FUNCLINE')
+        for sub_tokens in split_tokens:
+            if len(sub_tokens) > max_chunk_len:
+                for i in range(0, len(sub_tokens), max_chunk_len):
+                    wf.write(" ".join(sub_tokens[i:i + max_chunk_len]) + "\n")
+                    nexts.append(cnt + 1)
+                    cnt += 1
+            else:
+                wf.write(" ".join(sub_tokens) + "\n")
+                nexts.append(cnt+1)
+                cnt += 1
+        nexts[-1] -= 1
+    wf.close()
+    pickle.dump(nexts, open(output_dir + '/' + file_name.split("/")[-1].split(".")[0] + "_func_split_nexts.pkl", "wb"))
+    return split_file_path
 
 def my_collect_fn(sequences, batch_first=True, padding_value=1):
     inputs = []

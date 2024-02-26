@@ -221,7 +221,6 @@ def add_args(parser):
     
     # 命令相关
     parser.add_argument("--data_process", action="store_true")
-    parser.add_argument("--split_by_blank", action="store_true")
     parser.add_argument("--build_index", action='store_true')
     parser.add_argument("--do_search", action='store_true')
     parser.add_argument("--do_generate", action='store_true')
@@ -230,7 +229,9 @@ def add_args(parser):
     parser.add_argument("--use_hybrid", action='store_true')
     parser.add_argument("--bm_name", default="bm25", type=str, required=False,
                         help="elasticsearch name.")
-    parser.add_argument('--clearml_proj_name', type=str, default='Hybrid')
+    # clearml相关
+    parser.add_argument("--use_clearml", action='store_true')
+    parser.add_argument('--clearml_proj_name', type=str, default='Hybrid_blank')
     parser.add_argument('--task_name', type=str, default='')
     parser.add_argument('--log_file', type=str, default='log.log')
 
@@ -261,8 +262,8 @@ def main():
         description += "__hybrid"
     if args.use_dense:
         description += "__dense"
-
-    Task.init(project_name=args.clearml_proj_name, task_name=args.task_name)
+    if args.use_clearml:
+        Task.init(project_name=args.clearml_proj_name, task_name=args.task_name)
 
     # setup logging
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
@@ -282,13 +283,9 @@ def main():
     if args.data_process:
         print("<!--- process train dataset --->")
         # 1. 为数据库切分代码
-        if args.split_by_blank:
-            split_file_path = split_code_by_blank(args.dstore_file, args.dstore_path, max_chunk_len=args.max_chunk_len)
-        else:
-            split_file_path = split_code(args.dstore_file, args.dstore_path, max_chunk_len=args.max_chunk_len)
-
+        split_file_path = split_code_by_blank(args.dstore_file, args.dstore_path, max_chunk_len=args.max_chunk_len)
     else:
-        split_file_path = args.dstore_path + '/' + args.dstore_file.split("/")[-1].split(".")[0] + "_split.txt"
+        split_file_path = args.dstore_path + '/' + args.dstore_file.split("/")[-1].split(".")[0] + "_blank_split.txt"
 
     before_contexts_file = os.path.join(args.data_dir, "test.json")
 
@@ -308,7 +305,7 @@ def main():
     
     if args.do_generate:
         logger.info('<!-- do generate -->')
-        load_file = "train_split" if args.use_dense or args.use_bm25 else None
+        load_file = "train_blank_split" if args.use_dense or args.use_bm25 else None
         if args.use_bm25:
             res_file = "bm25_res"
         else:

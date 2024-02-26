@@ -96,6 +96,7 @@ class KNNWrapper(object):
         self.original_lmbda = self.lmbda
         self.cur_lambda = None
         self.dist_func = KNNWrapper.l2
+        self.search_time = 0
 
     def setup_faiss(self):
 
@@ -189,9 +190,10 @@ class KNNWrapper(object):
         lm_logits = output
         lm_logits = torch.softmax(lm_logits, dim=-1).flatten(0, 1)
         queries = self.activation_capturer.captured.flatten(0, 1)  # (batch, time, dim)
-
+        begin_time = time.time()
         dists, knns = self.get_knns(queries)
-
+        end_time = time.time()
+        self.search_time += (end_time - begin_time)
         # if self.recompute_dists:
         #     knns_vecs = torch.from_numpy(self.keys[knns]).to(self.device)
         #     dists = self.dist_func(queries, knns_vecs)
@@ -224,6 +226,7 @@ class KNNWrapper(object):
                 knn_token_ids = torch.argmax(knn_log_probs, dim=-1).view(batch, -1)
                 believe_lm = (lm_token_ids[:, :-shift] == self.input_ids[:, shift:])
                 believe_knn = (knn_token_ids[:, :-shift] == self.input_ids[:, shift:])
+                
                 lm_right = torch.sum(believe_lm & ~believe_knn)
                 knn_right = torch.sum(believe_knn & ~believe_lm)
                 self.lmbda = (knn_right / (lm_right + knn_right)).item()
